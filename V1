@@ -1,0 +1,330 @@
+Created on Tue Aug 11 19:12:29 2015
+
+@author: Stef
+"""
+
+import pandas as pd
+import numpy as np 
+import seaborn as sns
+from pylab import savefig
+import matplotlib.pyplot as plt
+import random
+from sklearn import preprocessing
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LinearRegression
+from sklearn import metrics
+from sklearn.feature_extraction import DictVectorizer as DV
+from sklearn.preprocessing import StandardScaler
+from sklearn.grid_search import GridSearchCV,RandomizedSearchCV
+from scipy.stats import randint, uniform
+from sklearn.metrics import mean_squared_error
+from sklearn.datasets import load_boston
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.grid_search import GridSearchCV
+from sklearn.cross_validation import train_test_split
+
+
+
+            ########################
+            #                      #
+            #       Variables      #
+            #                      #
+            ########################
+
+DO_LABELENCODE_CATEGORIES = True
+DO_ONEHOTENCODE = False #Arreglar
+DO_PLOT_CORRELATION = False
+DO_PLOT_HISTOGRAM = False
+DO_CROSS_VALIDATION = False
+DO_PRINT_RAWDATA = False
+DO_Train_Test_Split = False
+DO_REGRESSIONS = True
+DO_SUBMIT = False
+
+ESTIMATOR =[1,5,10,20]
+NEIGHBORS = [1,5,10]
+#REGRESSIONS = [LR,KNN,LOG,RF]
+LR = LinearRegression()
+LOG = LogisticRegression()
+KNN = KNeighborsClassifier(n_neighbors=1)
+RF = RandomForestRegressor()
+
+
+
+            ########################
+            #                      #
+            #        Input         #
+            #                      #
+            ########################
+
+
+
+train  = pd.read_csv('../input/train.csv', index_col=0)
+test  = pd.read_csv('../input/test.csv', index_col=0)
+
+if DO_PRINT_RAWDATA:
+    print (train.head())
+
+
+            ########################
+            #                      #
+            #       Data Proc      #
+            #                      #
+            ########################
+
+
+
+labels = train.Hazard
+train.drop('Hazard',axis=1, inplace=True)
+    
+
+X_train = train
+X_test = test
+
+columns = train.columns
+test_ind =test.index
+
+X_train = np.array(X_train)
+X_test = np.array(X_test)
+
+y = labels
+
+
+
+    #Labelencode
+
+if DO_LABELENCODE_CATEGORIES:
+    # label encode the categorical variables
+
+    for i in range(X_train.shape[1]):
+        if type(X_train[1,i]) is str:
+            lbl = preprocessing.LabelEncoder()
+            lbl.fit(list(X_train[:,i]) + list(X_test[:,i]))
+            X_train[:,i] = lbl.transform(X_train[:,i])
+            X_test[:,i] = lbl.transform(X_test[:,i])
+            
+    print ("y.shape",y.shape)
+    print ("X_train.shape",X_train.shape)
+    print ("X_test.shape new",X_test.shape)
+    #print (idx.shape)
+
+    
+X_train = X_train.astype(float)
+X_test = X_test.astype(float)
+
+
+   # print_Separador()
+
+
+    #One Hot Encoder
+
+if DO_ONEHOTENCODE:
+        #First one hot and make a pandas df
+    dat_dict=X_train.T.to_dict().values()
+    vectorizer = DV( sparse = False )
+    vectorizer.fit( dat_dict )
+    dat= vectorizer.transform( dat_dict )
+    dat=pd.DataFrame(dat)
+    
+    dat_dict=X_test.T.to_dict().values()
+    vectorizer = DV( sparse = False )
+    vectorizer.fit( dat_dict )
+    dat= vectorizer.transform( dat_dict )
+    dat=pd.DataFrame(dat)
+
+
+
+
+
+    
+            ########################
+            #                      #
+            #     Visualization    #
+            #                      #
+            ########################    
+    
+    
+    
+    
+if DO_PLOT_CORRELATION:
+    train = pd.read_csv("../input/train.csv",nrows=1000)
+    train.drop(['Id'],1,inplace=True)
+    columns = train.dtypes[train.dtypes == 'object'].keys()
+        # train = train.ix[:1000]
+
+
+        # for column in columns:
+        # lbl = preprocessing.LabelEncoder()
+        # train[column] = lbl.fit_transform(train[column])
+
+
+    sns.pairplot(train, hue="Hazard", diag_kind="kde")
+    savefig("plot-correlation.png")
+    
+    
+    
+
+if DO_PLOT_HISTOGRAM:
+    train = pd.read_csv("../input/train.csv")
+    train['T1_V4'] = pd.factorize(train['T1_V4'])[0]
+    train['T1_V5'] = pd.factorize(train['T1_V5'])[0]
+        # simple yes/no
+    train['T1_V6'] = pd.factorize(train['T1_V6'])[0]
+    train['T1_V7'] = pd.factorize(train['T1_V7'])[0]
+    train['T1_V8'] = pd.factorize(train['T1_V8'])[0]
+    train['T1_V9'] = pd.factorize(train['T1_V9'])[0]
+    train['T1_V11'] = pd.factorize(train['T1_V11'])[0]
+    train['T1_V12'] = pd.factorize(train['T1_V12'])[0]
+    train['T1_V15'] = pd.factorize(train['T1_V15'])[0]
+    train['T1_V16'] = pd.factorize(train['T1_V16'])[0]
+    train['T1_V17'] = pd.factorize(train['T1_V17'])[0]
+
+    train['T2_V3'] = pd.factorize(train['T2_V3'])[0]
+    train['T2_V5'] = pd.factorize(train['T2_V5'])[0]
+    train['T2_V11'] = pd.factorize(train['T2_V11'])[0]
+    train['T2_V12'] = pd.factorize(train['T2_V12'])[0]
+    train['T2_V13'] = pd.factorize(train['T2_V13'])[0]
+
+
+    fig = plt.figure(figsize=(15, 12))
+
+        # loop over all vars (total: 34)
+    for i in range(1, train.shape[1]):
+        plt.subplot(6, 6, i)
+        f = plt.gca()
+        f.axes.get_yaxis().set_visible(False)
+            # f.axes.set_ylim([0, train.shape[0]])
+
+        vals = np.size(train.iloc[:, i].unique())
+        if vals < 10:
+            bins = vals
+        else:
+                vals = 10
+                
+                plt.hist(train.iloc[:, i], bins=30, color='#3F5D7D')
+
+    plt.tight_layout()
+
+    plt.savefig("histogram-distribution.png")
+
+            ########################
+            #                      #
+            #   Train Test Split   #
+            #                      #
+            ########################
+
+
+if DO_Train_Test_Split:
+    X_training, X_testing, y_training, y_testing = train_test_split(X_train, y, test_size=0.4)
+    
+    
+               ## Random Forest ##    
+    
+    
+   #for i in  REGRESSIONS
+    #param_grid = {'n_estimators': [50, 100]} #original value
+    #param_grid = {'n_estimators': [15, 25]}
+    #model = GridSearchCV(RandomForestRegressor(), param_grid)
+    #model = model.fit(X_training,y_training)
+    #print("Best parameters found by grid search:")
+    #print(model.best_params_)
+    #print("Best CV score:")
+    #print(model.best_score_)
+    #predsrf = model.predict(X_testing)
+    #y_pred = model.predict(X_testing)
+    #print (metrics.accuracy_score(y_testing, y_pred))
+    
+    
+                ## KNN ##
+    
+    
+    knn = KNeighborsClassifier(n_neighbors=1)
+        # passing arguments a Kneighbords: Fitmethod, feasture metrix X and responsevektor y
+    knn.fit(X_training,y_training)
+        # predición de una flor desconocida, espesra un numpyarray pero funciona tmb con una lista, el resultado es un array que nos da el resultado de la predicción
+    y_pred = knn.predict(X_testing)    
+    knn.predict(X_testing)
+    print(knn.predict(X_testing))
+    print (metrics.accuracy_score(y_testing, y_pred))
+    
+    
+               ## LOGISTIC ##     
+    
+    
+    #logreg = LogisticRegression()
+
+        #fit the model(using the default parameters)
+        # fit the model with data
+    #logreg.fit(X_training, y_training)
+        #predict the response for new observations
+    #y_pred = logreg.predict(X_testing)
+    #logreg.predict(X_testing)
+    #print (logreg.predict(X_testing))
+    #print (metrics.accuracy_score(y_testing, y_pred))
+
+
+
+
+    
+            ########################
+            #                      #
+            #          ML          #
+            #                      #
+            ########################
+    
+    
+#from sklearn.ensemble import RandomForestRegressor
+#from sklearn.grid_search import GridSearchCV
+
+if DO_REGRESSIONS:
+    
+   #for i in  REGRESSIONS
+    #param_grid = {'n_estimators': [50, 100]} #original value
+    #param_grid = {'n_estimators': [15, 25]}
+    #model = GridSearchCV(RandomForestRegressor(), param_grid)
+    #model = model.fit(X_train,y)
+    #print("Best parameters found by grid search:")
+    #print(model.best_params_)
+    #print("Best CV score:")
+    #print(model.best_score_)
+    #predsrf = model.predict(X_test)
+
+    
+    knn = KNeighborsClassifier(n_neighbors=1)
+        # passing arguments a Kneighbords: Fitmethod, feasture metrix X and responsevektor y
+    knn.fit(X_train,y)
+        # predición de una flor desconocida, espesra un numpyarray pero funciona tmb con una lista, el resultado es un array que nos da el resultado de la predicción
+    y_pred = knn.predict(X_test)    
+    knn.predict(X_test)
+    print(knn.predict(X_test))
+
+    
+    
+    #logreg = LogisticRegression()
+
+        #fit the model(using the default parameters)
+        # fit the model with data
+    #logreg.fit(X_train, y)
+        #predict the response for new observations
+    #y_pred = logreg.predict(X_test)
+    #logreg.predict(X_test)
+    #print (logreg.predict(X_test))
+
+
+
+
+
+            ########################
+            #                      #
+            #     Submission       #
+            #                      #
+            ########################
+
+if DO_SUBMIT:
+    
+    total = y_pred
+    preds = pd.DataFrame({"Id": test_ind, "Hazard": total})
+    preds = preds.set_index('Id')
+    preds.to_csv('Prediction_benchmark.csv')
